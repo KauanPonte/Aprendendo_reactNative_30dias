@@ -1,93 +1,81 @@
-import { Text, TextInput, FlatList, View, Pressable} from "react-native";
-import { useState } from "react";
+import { Text, TextInput, FlatList, View, Pressable, ActivityIndicator, Image} from "react-native";
+import { useEffect, useState } from "react";
 
 export default function Index() {
-  const [name, setName] = useState('');
-  const [tarefas, setTarefas] =  useState<{id: number, text: string, status: boolean}[]>([]);
+  const [jogos, setJogos] = useState<any[]>([])
+  const [carregando, setCarregamdo] = useState(false)
+  const [erro, setErro] =useState('');
 
-
-
-    function addTarefa() {
-    if(name.trim() === ''){
-      return
-    }
-
-     setTarefas([...tarefas, {
-      id: Date.now(),
-      text: name,
-      status: false,
-    }])
-      setName('')
-    }
-
-    function removeTarefa(id: number){
-      setTarefas(
-        tarefas.filter((n) => (
-          n.id !== id
-        ))
-      )
-    }
-
-    function tarefaFeita(id: number) { 
-      setTarefas(
-        tarefas.map((n) => (
-          id === n.id ? {... n, status: !n.status} : n
-        ))
-      )
-    }
-
-  
     
+    
+  useEffect(() => {
+    async function carregar() {
+      try{
+        setCarregamdo(true)
+        const response = await fetch("https://api.rawg.io/api/games?key=88b8e9cbc6854fa0b7626c4020c0ef0f&page_size=20");
 
-  return (
-    <View style={{flex: 1}}>
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <TextInput
-        value={name}
-        onChangeText={setName}
-         placeholderTextColor="black"
-         placeholder="Digite seu nome"
-         style={{ borderWidth: 1,height: 30,margin: 15,padding: 5,width: 150 }}/>
+        if(!response.ok){
+          throw new Error (`Erro HTTP: ${response.status}`)
+        }
+
+        const dados = await response.json();
+        setJogos(dados.results)
+        console.log(dados.results)
+
+      } catch(e){
+        if(e instanceof Error){
+        setErro(`Não foi possivel carregar os jogos! Erro: ${e.message}`)
+        }
+      }finally{
+         setCarregamdo(false);
+      }
       
-        <Pressable onPress={addTarefa} style={{ borderWidth: 1, width: 50,height:20, justifyContent: "center", alignItems: "center", marginTop: 10, marginLeft: -5, backgroundColor: "blue", borderRadius: 50}} >
-          <Text style={{fontSize: 9, color: "white"}}>Adicionar</Text>
-        </Pressable>
+    }
+    carregar()
+  },[]);
 
   
+  return(
+    <View style={{flex:1}}>
+      {carregando ? (
+        <ActivityIndicator  style={{margin: 100}} size={"large"} color={"blue"}/>
 
-      </View>
-    
-      <FlatList 
-        style={{flex: 1}}
-        data={tarefas}
-        keyExtractor={(item, index) => item.id.toString()}
-        renderItem={({item}) => (
-          <View style={{flexDirection: "row", justifyContent: "space-between"}}> 
-              <Text style={[{margin:10}, item.status && {textDecorationLine: "line-through"} ]}>Tarefa: {item.text}</Text>
-              
-              <View style={{flexDirection: "row"}}> 
-                <Pressable onPress={() => removeTarefa(item.id)} style={{ borderWidth: 1, width: 50,height:20, justifyContent: "center", alignItems: "center", marginTop: 10, marginRight: 10 , backgroundColor: "red", borderRadius: 50}} >
-                  <Text style={{fontSize: 9, color: "white"}}>Remover</Text>
-                </Pressable>
+      ) :erro ? (
+        <Text>{erro}</Text>
 
-                <Pressable onPress={() => tarefaFeita(item.id)} style={{ borderWidth: 1, width: 50,height:20, justifyContent: "center", alignItems: "center", marginTop: 10, marginRight: 10, backgroundColor: "green", borderRadius: 50 }} >
-                  <Text style={{fontSize: 9, color: "white"}}>Feito</Text>
-                </Pressable>
+      ) : (
+        <FlatList 
+          data={jogos} 
+          keyExtractor={(item,index) => item.id.toString()}
+          renderItem={({item})=> (
+            <View style={{margin: 10, alignItems: "center",  }}>
+
+              <View style={{margin:5}}>
+                <Text style={{color:'black'}}>{item.name}</Text>
               </View>
-          </View>
+
+              <View>
+                <Image
+                source={{uri: item.background_image}}
+                style={{width: 150, height: 100}}
+                /> 
+              </View>
+
+              <View>
+                <Text>Nota: {item.rating}</Text>
+              </View>
+
+            </View>
+          )}
+        />
+      ) }
+    </View>
+  )
 
 
+  
+  
+    
 
-        )}
-      />
-
-       <View style={{bottom: 40, left:250}} > 
-          <Text >
-            {tarefas.filter((n) => n.status).length} de {tarefas.length} Concluidas!
-          </Text>
-        </View>
-
-
-    </View> 
-  );
+  
 }
